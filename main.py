@@ -8,11 +8,20 @@ from pydantic import BaseModel
 from pathlib import Path
 from dotenv import load_dotenv
 import os
+import logging
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 
 TOKEN = os.getenv("TOKEN", "<generated_token>")  # Replace with your application key
 MY_NUMBER = os.getenv("MY_NUMBER", "9189XXXXXXXX")  # Replace with your phone number
+PORT = int(os.getenv("PORT", "8085"))  # Render provides PORT environment variable
 
 class RichToolDescription(BaseModel):
     description: str
@@ -91,13 +100,13 @@ def register_core_tools(mcp):
                         message="Resume file is empty"
                     )
                 )
-            print(f"Serving resume from {resume_path}\n")
-            print(f"Resume content:\n{resume_content}\n") 
+            logger.info(f"Serving resume from {resume_path}")
             return resume_content
             
         except Exception as e:
             if isinstance(e, McpError):
                 raise
+            logger.error(f"Error reading resume: {str(e)}")
             raise McpError(
                 ErrorData(
                     code=INTERNAL_ERROR,
@@ -117,14 +126,15 @@ register_core_tools(mcp)
 
 
 async def main():
-    print(f" Starting MCP Server...")
-    print(f" Server URL: http://localhost:8086/mcp")
-  #  print(f"📄 Resume file: {Path(__file__).parent / 'resume.md'}")
-    print("-" * 50)
+    logger.info("Starting MCP Server...")
+    logger.info(f"Server will be available at: http://0.0.0.0:{PORT}/mcp")
+    logger.info(f"Resume file: {Path(__file__).parent / 'resume.md'}")
+    logger.info("-" * 50)
+    
     await mcp.run_async(
         "streamable-http",
-        host="localhost",
-        port=8085,
+        host="0.0.0.0",  # Bind to all interfaces for external access
+        port=PORT,
     )
 
 
